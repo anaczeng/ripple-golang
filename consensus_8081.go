@@ -271,7 +271,7 @@ func Insert(info PriorityQueue, msg *Msg) PriorityQueue {
 	i := len(info) - 1
 
 	fmt.Println("Insert", i, Parent(i+1)-1, len(info))
-	for i > -1 && info[i].Priority > info[Parent(i+1)-1].Priority {
+	for i > 0 && info[i].Priority > info[Parent(i+1)-1].Priority {
 		info[i], info[Parent(i+1)-1] = info[Parent(i+1)-1], info[i]
 		i = Parent(i+1) - 1
 	}
