@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"strings"
 	"sync"
@@ -14,18 +15,18 @@ import (
 )
 
 const (
-	port          = ":8080"
+	port          = ":8081"
 	commandLength = 20
 	netSize       = 4
 )
 
 var (
 	//	seq int
-	nailSet          = map[int]int{1: 1, 2: 1, 3: 1}
+	nailSet          map[int]int
 	seq              = 1
 	oldSeq           int
-	txSet            = map[int]int{1: 1, 2: 1, 3: 1}
-	address          = []string{":8081", ":8082", ":8083"}
+	txSet            map[int]int
+	address          = []string{":8080", ":8082", ":8083"}
 	step             = 0 //step in a round
 	majority         []int
 	midMux           sync.Mutex
@@ -34,6 +35,7 @@ var (
 	alreadyReceStart []string
 	infoQueue        PriorityQueue
 	locker           sync.Mutex
+	nailLock         sync.Mutex
 )
 
 //sequence of round
@@ -54,12 +56,28 @@ type Proposal struct {
 }
 
 func Reset() {
-	txSet = map[int]int{1: 1, 2: 1, 3: 1} //it will be a function laterly
+
+	txSet = MakeRandomMap()
+	nailLock.Lock()
+	nailSet = CopyTx()
+	nailLock.Unlock()
+
+	fmt.Println(txSet, nailSet)
 	step = 0
 	majority = []int{}
 	finalConsensus = []int{}
 	finalVote = 1
 	alreadyReceStart = []string{}
+}
+
+func CopyTx() map[int]int {
+	res := make(map[int]int, len(txSet))
+
+	for k, _ := range txSet {
+		res[k] = 1
+	}
+
+	return res
 }
 
 func (v *Proposal) Serialize() []byte {
@@ -88,21 +106,16 @@ func Deserialize(d []byte) *Proposal {
 
 func main() {
 
+	txSet = MakeRandomMap()
+	nailSet = CopyTx()
+	fmt.Println(txSet, nailSet)
 	go Start()
 	go Execute()
 	Listen()
 }
 
 func Start() {
-	/*prop := &Proposal{txSet, step, seq, port}
-	fmt.Println("start prop", prop)
-	byteProp := prop.Serialize()
-	fmt.Println("start byteprop len", len(byteProp))
 
-	for _, ad := range address {
-		SendData(ad, byteProp)
-	}
-	*/
 	if seq == 1 {
 		oldSeq = seq
 	}
@@ -119,7 +132,7 @@ func Start() {
 			oldSeq = seq
 			SendStart()
 		}
-		//time.Sleep(2 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 
 }
@@ -138,8 +151,8 @@ func Execute() {
 		locker.Lock()
 		if len(infoQueue) == 0 {
 			locker.Unlock()
-			//fmt.Println("None")
-			//time.Sleep(time.Second)
+			fmt.Println("None")
+			time.Sleep(time.Second)
 			continue
 		}
 
@@ -165,7 +178,7 @@ func Execute() {
 			}
 
 			CheckFinalConsensus(netSize)
-			//time.Sleep(time.Second)
+			time.Sleep(time.Second)
 			//			}
 		case "restart":
 			fmt.Println("Enter execution restart from ", prop.I)
@@ -407,46 +420,6 @@ func handleConnection(conn net.Conn, i int) {
 	default:
 		fmt.Println("No such command!")
 	}
-
-	/*
-		switch cmd {
-		case "start":
-			fmt.Println("Enter handleconnection start from ", prop.I)
-			if AlreadyReceStart(prop.I) {
-				fmt.Println("already received", alreadyReceStart)
-				return
-			} else {
-				alreadyReceStart = append(alreadyReceStart, prop.I)
-				Restart(prop.I)
-				Update(prop)
-				if len(alreadyReceStart) > (netSize - 2) {
-					CheckMidConsensus(netSize - 1)
-				}
-			}
-		case "mid":
-			fmt.Println("Enter handleconnection mid from ", prop.I)
-			Update(prop)
-			CheckFinalConsensus(netSize)
-		case "final":
-			fmt.Println("Enter handleconnection final from ", prop.I)
-			//fmt.Println("Counting the vote of final and Write to database")
-			AddFinalVote(netSize, prop.Tx)
-		case "restart":
-			fmt.Println("Enter handleconnection restart from ", prop.I)
-			if AlreadyReceStart(prop.I) {
-				fmt.Println("already received", alreadyReceStart)
-				return
-			} else {
-				alreadyReceStart = append(alreadyReceStart, prop.I)
-				Update(prop)
-				if len(alreadyReceStart) > (netSize - 2) {
-					CheckMidConsensus(netSize - 1)
-				}
-			}
-		default:
-			fmt.Println("Now such command!")
-		}
-	*/
 	conn.Close()
 }
 
@@ -465,12 +438,6 @@ func Update(prop *Proposal) {
 	/*
 	   //simplify the function only doing the update job and
 	   move the communication action to another function
-
-	   round := prop.R
-	   	if round == 0 && reSend {
-	   		cmd := "restart"
-	   		Broadcast(nailSet, Addr(prop.I), cmd)
-	   	} //drop obslete info
 	*/
 
 	txs := prop.Tx
@@ -804,4 +771,48 @@ func ElementExistsInArray(arr []int, tx int) bool {
 	}
 
 	return res
+}
+
+func MakeRandomMap() map[int]int {
+	var length int
+	for {
+		length = MakeRandomNo(4)
+		if length != 0 {
+			break
+		}
+	}
+	tx := make(map[int]int, length)
+	var check []int
+	var n int
+
+	for i := 0; i < length; i++ {
+		for {
+			n = MakeRandomNo(5)
+			if !Exists(check, n) {
+				check = append(check, n)
+				break
+			}
+		}
+		tx[n] = 1
+	}
+
+	return tx
+
+}
+
+func Exists(arr []int, i int) bool {
+	res := false
+	for _, v := range arr {
+		if v == i {
+			res = true
+			return res
+		}
+	}
+	return res
+}
+
+func MakeRandomNo(w int) int {
+	s := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(s)
+	return r.Intn(w)
 }

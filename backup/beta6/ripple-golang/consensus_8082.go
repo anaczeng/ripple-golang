@@ -14,18 +14,18 @@ import (
 )
 
 const (
-	port          = ":8080"
+	port          = ":8082"
 	commandLength = 20
 	netSize       = 4
 )
 
 var (
 	//	seq int
-	nailSet          = map[int]int{1: 1, 2: 1, 3: 1}
+	nailSet          = map[int]int{1: 1, 5: 1, 3: 1}
 	seq              = 1
 	oldSeq           int
-	txSet            = map[int]int{1: 1, 2: 1, 3: 1}
-	address          = []string{":8081", ":8082", ":8083"}
+	txSet            = map[int]int{1: 1, 5: 1, 3: 1}
+	address          = []string{":8081", ":8080", ":8083"}
 	step             = 0 //step in a round
 	majority         []int
 	midMux           sync.Mutex
@@ -54,7 +54,7 @@ type Proposal struct {
 }
 
 func Reset() {
-	txSet = map[int]int{1: 1, 2: 1, 3: 1} //it will be a function laterly
+	txSet = map[int]int{1: 1, 5: 1, 3: 1} //it will be a function laterly
 	step = 0
 	majority = []int{}
 	finalConsensus = []int{}
@@ -119,7 +119,7 @@ func Start() {
 			oldSeq = seq
 			SendStart()
 		}
-		//time.Sleep(2 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 
 }
@@ -138,8 +138,8 @@ func Execute() {
 		locker.Lock()
 		if len(infoQueue) == 0 {
 			locker.Unlock()
-			//fmt.Println("None")
-			//time.Sleep(time.Second)
+			fmt.Println("None")
+			time.Sleep(time.Second)
 			continue
 		}
 
@@ -165,7 +165,7 @@ func Execute() {
 			}
 
 			CheckFinalConsensus(netSize)
-			//time.Sleep(time.Second)
+			time.Sleep(time.Second)
 			//			}
 		case "restart":
 			fmt.Println("Enter execution restart from ", prop.I)

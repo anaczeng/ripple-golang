@@ -119,7 +119,7 @@ func Start() {
 			oldSeq = seq
 			SendStart()
 		}
-		//time.Sleep(2 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 
 }
@@ -138,8 +138,8 @@ func Execute() {
 		locker.Lock()
 		if len(infoQueue) == 0 {
 			locker.Unlock()
-			//fmt.Println("None")
-			//time.Sleep(time.Second)
+			fmt.Println("None")
+			time.Sleep(time.Second)
 			continue
 		}
 
@@ -165,7 +165,7 @@ func Execute() {
 			}
 
 			CheckFinalConsensus(netSize)
-			//time.Sleep(time.Second)
+			time.Sleep(time.Second)
 			//			}
 		case "restart":
 			fmt.Println("Enter execution restart from ", prop.I)
