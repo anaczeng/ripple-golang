@@ -35,6 +35,7 @@ var (
 	infoQueue        PriorityQueue
 	locker           sync.Mutex
 	nailLock         sync.Mutex
+	timeLock         sync.Mutex
 	start            time.Time
 )
 
@@ -194,18 +195,19 @@ func Execute() {
 
 			time.Sleep(time.Second)
 
-			if elapse > 15*time.Second {
-				fmt.Println("15s no execution")
+			if elapse > 60*time.Second {
+				fmt.Println("60no execution")
 				fmt.Println("round ", seq, " has failed!")
 				Reset()
 				SendAgain()
+				timeLock.Lock()
 				start = time.Now()
+				timeLock.Unlock()
 			}
 
 			continue
 		}
 
-		start = time.Now()
 		msg := infoQueue[0]
 		infoQueue = ExtractMax(infoQueue)
 		fmt.Println("infoQueue", infoQueue)
@@ -376,6 +378,9 @@ func Listen() {
 	n := 1
 	for {
 		conn, err := ln.Accept()
+		timeLock.Lock()
+		start = time.Now()
+		timeLock.Unlock()
 		fmt.Println("link ", n)
 		if err != nil {
 			fmt.Println("ln err:", err)
@@ -460,7 +465,7 @@ func handleConnection(conn net.Conn, i int) {
 	case "again":
 		fmt.Println("Enter handleconnection again from ", prop.I)
 		Reset()
-		Restart(prop.I)
+		SendStart()
 	default:
 		fmt.Println("No such command!")
 	}
@@ -653,8 +658,12 @@ func Broadcast(info map[int]int, addr []string, cmd string) error {
 
 	var isErrExist bool = false
 	for _, ad := range addr {
+	Back:
 		err := SendData(ad, content)
 		if err != nil {
+			if strings.Compare(cmd, "restart") == 0 {
+				goto Back
+			}
 			isErrExist = true
 			fmt.Println("err", err)
 			continue

@@ -109,15 +109,25 @@ func Deserialize(d []byte) *Proposal {
 }
 
 func main() {
-	Start()
+	txSet = MakeRandomMap()
+	nailSet = CopyTx()
+	fmt.Println(txSet, nailSet)
+
+	start = time.Now()
+
+	if seq == 1 {
+		SendStart()
+	}
+
 	go Execute()
 	Listen()
 }
 
+/*
 func Start() {
-	/*
-		It works only when the program starts.
-	*/
+
+	//	It works only when the program starts.
+
 
 	txSet = MakeRandomMap()
 	nailSet = CopyTx()
@@ -130,6 +140,7 @@ func Start() {
 	}
 
 }
+*/
 
 /*
 func Start() {
@@ -642,8 +653,12 @@ func Broadcast(info map[int]int, addr []string, cmd string) error {
 
 	var isErrExist bool = false
 	for _, ad := range addr {
+	Back:
 		err := SendData(ad, content)
 		if err != nil {
+			if strings.Compare(cmd, "restart") == 0 {
+				goto Back
+			}
 			isErrExist = true
 			fmt.Println("err", err)
 			continue
