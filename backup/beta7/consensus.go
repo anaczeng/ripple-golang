@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	port          = ":8082"
+	port          = ":8080"
 	commandLength = 20
 	netSize       = 4
 )
@@ -26,7 +26,7 @@ var (
 	seq              = 1
 	oldSeq           int
 	txSet            map[int]int
-	address          = []string{":8081", ":8080", ":8083"}
+	address          = []string{":8081", ":8082", ":8083"}
 	step             = 0 //step in a round
 	majority         []int
 	midMux           sync.Mutex
@@ -37,6 +37,8 @@ var (
 	locker           sync.Mutex
 	nailLock         sync.Mutex
 )
+
+//sequence of round
 
 type Msg struct {
 	Prop     *Proposal
@@ -103,34 +105,15 @@ func Deserialize(d []byte) *Proposal {
 }
 
 func main() {
+
 	txSet = MakeRandomMap()
 	nailSet = CopyTx()
 	fmt.Println(txSet, nailSet)
-	if seq == 1 {
-		oldSeq = seq
-	}
-
-	SendStart() //The 1st time setup
-
-	//go Start()
+	go Start()
 	go Execute()
 	Listen()
 }
 
-/*
-func Start() {
-	txSet = MakeRandomMap()
-	nailSet = CopyTx()
-	fmt.Println(txSet, nailSet)
-
-	if seq == 1 {
-		oldSeq = seq
-	}
-
-	SendStart()
-}
-*/
-
 func Start() {
 
 	if seq == 1 {
@@ -139,7 +122,9 @@ func Start() {
 
 	SendStart() //The 1st time setup
 
-	//	All nodes setup and begin regular round's setup after the 1st round
+	/*
+		All nodes setup and begin regular round's setup after the 1st round
+	*/
 
 	for {
 		fmt.Println("oldSeq", "seq", oldSeq, seq)
@@ -149,6 +134,7 @@ func Start() {
 		}
 		time.Sleep(2 * time.Second)
 	}
+
 }
 
 func SendStart() {
@@ -180,6 +166,12 @@ func Execute() {
 		switch cmd {
 		case "start":
 			fmt.Println("Enter execution start from ", prop.I)
+			//			if AlreadyReceStart(prop.I) {
+			//				fmt.Println("Already received and drop msg")
+			//				continue
+			//			} else {
+			//				alreadyReceStart = append(alreadyReceStart, prop.I)
+			//				Restart(prop.I)
 			Update(prop)
 			if len(alreadyReceStart) > (netSize - 2) {
 				CheckMidConsensus(netSize - 1)
@@ -187,13 +179,20 @@ func Execute() {
 
 			CheckFinalConsensus(netSize)
 			time.Sleep(time.Second)
+			//			}
 		case "restart":
 			fmt.Println("Enter execution restart from ", prop.I)
+			//			if AlreadyReceStart(prop.I) {
+			//				fmt.Println("Already received and drop msg")
+			//				continue
+			//			} else {
+			//				alreadyReceStart = append(alreadyReceStart, prop.I)
 			Update(prop)
 			if len(alreadyReceStart) > (netSize - 2) {
 				CheckMidConsensus(netSize - 1)
 			}
 			CheckFinalConsensus(netSize)
+			//			}
 		case "mid":
 			fmt.Println("Enter execution mid from ", prop.I)
 			Update(prop)
@@ -231,6 +230,22 @@ func ExtractMax(info PriorityQueue) PriorityQueue {
 
 	return info
 }
+
+/*
+func IncreaseKey(info PriorityQueue, i int, key int) PriorityQueue {
+	if info[i].Prioirty > key {
+		fmt.Println("key is smaller")
+		return info
+	}
+
+	info[i].Priority = key
+	for Parent(i+1)-1 > -1 && info[Parent(i+1)-1] < info[i] {
+		info[Parent(i+1)-1], info[i] = info[i], info[Parent(i+1)-1]
+		i = Parent(i+1) - 1
+	}
+	return info
+}
+*/
 
 func CheckHeap(info PriorityQueue) bool {
 	res := true
@@ -415,10 +430,15 @@ func Restart(addr string) {
 }
 
 func Update(prop *Proposal) {
-	//return the changes of the set
+	/*
+		return the changes of the set
 
-	//simplify the function only doing the update job and
-	// move the communication action to another function
+	*/
+	//fmt.Println("Enter update")
+	/*
+	   //simplify the function only doing the update job and
+	   move the communication action to another function
+	*/
 
 	txs := prop.Tx
 
@@ -431,6 +451,16 @@ func Update(prop *Proposal) {
 			fmt.Println("txSet:", k, txSet[k])
 		}
 	}
+
+	//fmt.Println("NailSet:", nailSet)
+	//fmt.Println("txSet:", txSet)
+	/*
+		step++
+		newProp := &Proposal{txSet, step, seq, port}
+		fmt.Println("newProp", newProp.Tx, step)
+		byteNewProp := newProp.Serialize()
+		SendData(nodeAddr, byteNewProp)
+	*/
 }
 
 func CheckMidConsensus(midThreshold int) {
@@ -478,6 +508,20 @@ func CheckMidConsensus(midThreshold int) {
 	fmt.Println("midconsensus majority", majority)
 }
 
+/*//abandon function
+func LoopMid(midThreshold int) {
+	for {
+		midMux.Lock()
+		if step < 2 {
+			midMux.Unlock()
+			continue
+		}
+		midMux.Unlock()
+		CheckMidConsensus(midThreshold)
+	}
+}
+*/
+
 func CheckFinalConsensus(fullThreshold int) {
 	/*
 		Here is after 2nd phase, counting votes for those who get full votes from the quorum
@@ -485,17 +529,22 @@ func CheckFinalConsensus(fullThreshold int) {
 		Enter the next round
 	*/
 
+	//var final bool = false
 	fullSet := make(map[int]int)
 	var res []int //It is used temporarily when no database
 
 	fmt.Println("Begin to check final consensus")
 	for tx, vote := range txSet {
 		if vote == fullThreshold {
+			//final = true
 			fullSet[tx] = vote
 			res = append(res, tx)
 		}
+		//	time.Sleep(3 * time.Second)
 	}
 
+	//if final {
+	//fmt.Println(len(res), len(majority))
 	if len(res) == len(majority) && len(res) != 0 {
 		cmd := "final"
 		Broadcast(fullSet, address, cmd) //it should use another command
@@ -515,6 +564,7 @@ func CheckValidation(rece map[int]int) error {
 	}
 
 	for i := 0; i < len(res); i++ {
+		//fmt.Println(res[i], finalConsensus[i])
 		if res[i] != finalConsensus[i] {
 			err := errors.New("consensus is not the same!")
 			fmt.Println(err)
@@ -573,11 +623,13 @@ func Broadcast(info map[int]int, addr []string, cmd string) error {
 		return err
 	}
 
+	//fmt.Println("successfully send!", step)
 	return nil
 }
 
 func SendData(addr string, data []byte) error {
 
+	//fmt.Println("Send data")
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		fmt.Println("Dial err:", err)
@@ -624,6 +676,33 @@ func AlreadyReceStart(addr string) bool {
 	return alreadyRece
 
 }
+
+/*
+	drop those address already send start msg
+	The input is alreadySend
+
+func StillSend(addr []string) []string {
+	var stillSendAd []string
+	midAd := address
+
+	for _, ad1 := range addr {
+		for index, ad2 := range address {
+			if ad1 == ad2 {
+				midAd[index] = ""
+			}
+		}
+	}
+
+	for i := 0; i < len(midAd); i++ {
+
+		if len(midAd[i]) != 0 {
+			stillSendAd = append(stillSendAd, midAd[i])
+		}
+	}
+
+	return stillSendAd
+}
+*/
 
 func Command2Byte(cmd string) []byte {
 	byteStdCmd := make([]byte, commandLength)

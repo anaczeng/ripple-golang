@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	port          = ":8082"
+	port          = ":8080"
 	commandLength = 20
 	netSize       = 4
 )
@@ -26,7 +26,7 @@ var (
 	seq              = 1
 	oldSeq           int
 	txSet            map[int]int
-	address          = []string{":8081", ":8080", ":8083"}
+	address          = []string{":8081", ":8082", ":8083"}
 	step             = 0 //step in a round
 	majority         []int
 	midMux           sync.Mutex
@@ -131,6 +131,7 @@ func Start() {
 }
 */
 
+/*
 func Start() {
 
 	if seq == 1 {
@@ -150,6 +151,7 @@ func Start() {
 		time.Sleep(2 * time.Second)
 	}
 }
+*/
 
 func SendStart() {
 	fmt.Println("Enter Start")
