@@ -1,6 +1,6 @@
 It is a simple implement of ripple consensus.
 
-It is based on the understanding of developer and it may not be not the same as that implemented in C++.
+It is based on the understanding of developer and it may not be the same as that implemented in C++.
 
 In this version, it can reach consensus among nodes already known. There are variables that can be customised. 
 
